@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AI Knowledge Chatbot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=2) }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">🤖</div>
+      <div>
+        <h2>AI Chatbot</h2>
+        <span><i></i> Online</span>
+      </div>
+    </div>
+
+    <button class="side-action primary-side" id="newChat">＋ <span>New Chat</span></button>
+    <button class="side-action" id="analyticsBtn">▥ <span>Analytics</span></button>
+    <button class="side-action" id="exportCurrent">⇩ <span>Export Chat</span></button>
+
+    <div class="chats-heading">
+      <span>Your Chats</span>
+      <button id="refreshChats" title="Refresh chats">↻</button>
+    </div>
+
+    <div id="chatHistory" class="chat-history"></div>
+
+    <div class="sidebar-bottom">
+      <button class="side-action profile-side" id="profileBtn">👤 <span>Profile</span></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-brand">🤖 <span>AI Knowledge Chatbot</span></div>
+      <div class="top-actions">
+        <button id="themeBtn" title="Toggle theme">☼</button>
+      </div>
+    </header>
+
+    <section id="chatStage" class="chat-stage {% if not messages %}is-empty{% endif %}">
+      <div id="messages" class="messages">
+        {% for m in messages %}
+        <div class="message {{ m.role }}">
+          <div class="bubble">{{ m.content|replace('\n','<br>')|safe }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="composer-wrap">
+        {% if not messages %}
+        <div class="welcome" id="welcomeBlock">
+          <div class="welcome-icon">🤖</div>
+          <h2>Hello{% if profile.get('name') %}, {{ profile.get('name') }}{% endif %}! 👋</h2>
+          <p>Ask me anything, or upload a file.</p>
+        </div>
+        {% endif %}
+
+        <div class="composer">
+          <div class="composer-input-row">
+            <button id="attachBtn" class="tool-btn" title="Upload a file">📎</button>
+            <textarea id="messageInput" rows="1" placeholder="Ask anything..."></textarea>
+            <div class="composer-actions">
+              <button id="micBtn" class="circle-btn" title="Voice input">🎙</button>
+              <button id="sendBtn" class="circle-btn send-circle" title="Send">➤</button>
+            </div>
+          </div>
+          <div id="fileStatus" class="file-status" aria-live="polite"></div>
+        </div>
+
+        {% if not messages %}
+        <div class="chips" id="chipsBlock">
+          <button>What is AI?</button>
+          <button>Explain black holes simply</button>
+          <button>Who is the PM of Pakistan?</button>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+  </main>
+</div>
+
+<input id="fileInput" type="file" hidden accept=".pdf,.docx,.pptx,.xlsx,.xls,.csv,.txt,.md,.json">
+
+<!-- Analytics modal -->
+<div id="analyticsModal" class="modal-backdrop" aria-hidden="true">
+  <div class="modal-card analytics-modal" role="dialog" aria-modal="true" aria-labelledby="analyticsTitle">
+    <button class="modal-close" data-close="analyticsModal">×</button>
+    <div class="modal-heading">
+      <div class="modal-icon">📊</div>
+      <div>
+        <h2 id="analyticsTitle">Analytics Dashboard</h2>
+        <p>Real usage statistics from your chatbot</p>
+      </div>
+    </div>
+    <div class="big-stats">
+      <div><strong id="aChats">0</strong><span>Conversations</span></div>
+      <div><strong id="aQuestions">0</strong><span>Total Questions</span></div>
+      <div><strong id="aVoice">0</strong><span>Voice Questions</span></div>
+      <div><strong id="aFiles">0</strong><span>Files Uploaded</span></div>
+    </div>
+    <h3>Questions by Domain</h3>
+    <div id="analyticsDomains" class="bars"></div>
+  </div>
+</div>
+
+<!-- Profile modal -->
+<div id="profileModal" class="modal-backdrop" aria-hidden="true">
+  <div class="modal-card profile-modal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <button class="modal-close" data-close="profileModal">×</button>
+    <div class="modal-heading">
+      <div class="profile-avatar">👤</div>
+      <div>
+        <h2 id="profileTitle">Profile & Memory</h2>
+        <p>Save information you choose to use for personalized responses.</p>
+      </div>
+    </div>
+    <div class="profile-form">
+      <label>Name<input id="pName" autocomplete="name"></label>
+      <label>Age<input id="pAge" type="number" min="1" max="120"></label>
+      <label>Degree / Studies<input id="pStudies" placeholder="e.g. BSCS"></label>
+      <label>University<input id="pUniversity"></label>
+      <label class="full-field">Interests<input id="pInterests" placeholder="coding, video editing"></label>
+    </div>
+    <div class="modal-footer">
+      <span id="profileStatus"></span>
+      <button id="saveProfile" class="primary">Save Profile</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="{{ url_for('static', filename='app.js', v=2) }}"></script>
+</body>
+</html>
