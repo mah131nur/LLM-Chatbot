@@ -1,0 +1,31 @@
+# Virtual environment
+venv/
+
+# Environment variables / API keys
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Database files
+database/
+
+# Uploaded files
+uploads/
+
+# User-generated profile data
+user_profile.json
+
+# VS Code
+.vscode/
+
+# Python build/cache files
+*.egg-info/
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
