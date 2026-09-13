@@ -28,9 +28,16 @@ def get_session_id():
     return session["session_id"]
 
 
-def build_history(sid, limit=10):
+def build_history(sid, limit=6, max_chars_per_message=600):
     """Turn recently stored chat messages into Groq-style role/content
-    history so the AI has some memory of the current conversation."""
+    history so the AI has some memory of the current conversation.
+
+    Kept deliberately short: Groq's free tier caps requests at a low
+    tokens-per-minute limit for this model, and unbounded history
+    (especially long past AI answers) was the main way requests blew
+    past that limit. Fewer messages, each capped in length, keeps
+    normal conversations well within budget while still giving the
+    model real short-term memory."""
     try:
         messages = get_session_messages(sid)
     except Exception:
@@ -40,12 +47,14 @@ def build_history(sid, limit=10):
     for m in messages[-limit:]:
         role = "user" if m.get("role") == "user" else "assistant"
         content = m.get("content", "")
+        if content and len(content) > max_chars_per_message:
+            content = content[:max_chars_per_message] + "…"
         if content:
             history.append({"role": role, "content": content})
     return history
 
 
-def get_active_file_context(limit_chars=8000):
+def get_active_file_context(limit_chars=4000):
     """If the user uploaded a file earlier in this browser session,
     return its extracted text (truncated) so it can be passed to the
     LLM as context for follow-up questions — this is what lets the

@@ -19,11 +19,9 @@ import re
 import json
 
 from groq import Groq
-from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
-
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY")
 
@@ -501,7 +499,7 @@ def fix_devanagari_script(answer):
                 {"role": "user", "content": answer},
             ],
             temperature=0,
-            max_tokens=4096,
+            max_tokens=2048,
         )
         rewritten = completion.choices[0].message.content.strip()
         return rewritten if rewritten else answer
@@ -561,7 +559,7 @@ def ask_llm(question, history=None, web_context=None, file_context=None, profile
             model=GROQ_MODEL,
             messages=messages,
             temperature=0.7,
-            max_tokens=4096,
+            max_tokens=2048,
         )
 
         answer = completion.choices[0].message.content.strip()
@@ -609,7 +607,7 @@ def summarize_file_with_llm(text, filename=""):
         f"Summarize the uploaded file{label} in a few clear, well "
         f"organized paragraphs covering its main points."
     )
-    return ask_llm(prompt, file_context=text[:8000])
+    return ask_llm(prompt, file_context=text[:4000])
 
 
 def get_answer(question, history=None, file_context=None, profile_context=None):

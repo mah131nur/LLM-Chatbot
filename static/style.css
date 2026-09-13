@@ -114,12 +114,25 @@ body.dark .modal-icon,body.dark .profile-avatar{background:#17345a}
 @media(max-width:1050px){.sidebar{width:235px;flex-basis:235px}}
 @media(max-width:760px){
   body{overflow:auto}.app-shell{min-height:100vh;height:auto}
-  .sidebar{width:70px;flex-basis:70px;padding:16px 9px}
-  .brand{justify-content:center;padding:4px 0 18px}
-  .brand>div:last-child,.side-action span,.chats-heading span,.chat-history{display:none}
-  .side-action{justify-content:center;padding:12px}
-  .chats-heading{justify-content:center}.chats-heading button{display:block}
-  .sidebar-bottom{margin-top:auto}
+
+  /* Sidebar becomes a full off-canvas overlay drawer on mobile,
+     hidden by default — matching ChatGPT's mobile behavior — instead
+     of a permanent narrow icon strip. */
+  .sidebar{
+    position:fixed;top:0;left:0;bottom:0;width:270px;flex-basis:270px;
+    z-index:300;transform:translateX(-100%);transition:transform .25s ease;
+    box-shadow:16px 0 40px rgba(0,0,0,.25);padding:20px 14px 14px;opacity:1
+  }
+  .app-shell:not(.sidebar-closed) .sidebar{transform:translateX(0)}
+  .app-shell.sidebar-closed .sidebar{width:270px;flex-basis:270px}
+  .brand>div:last-child,.side-action span,.chats-heading span{display:block}
+  .chat-history{display:block}
+  .sidebar-backdrop{
+    position:fixed;inset:0;background:rgba(8,20,40,.45);z-index:250;
+    opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease
+  }
+  .app-shell:not(.sidebar-closed) .sidebar-backdrop{opacity:1;visibility:visible}
+
   .main{height:100vh}
   .topbar{padding:10px 14px}.topbar-brand span{display:none}
   .chat-stage{padding:0 10px}

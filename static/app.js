@@ -272,6 +272,7 @@ document.addEventListener('click', (event) => {
 
 async function createNewChat() {
   await fetch('/api/new-chat', {method: 'POST'});
+  closeSidebarOnMobile();
   window.location.reload();
 }
 
@@ -351,6 +352,7 @@ async function openHistory(id) {
     data.messages.forEach((message) => addMessage(message.role, message.content));
     loadChatHistory();
     scrollMessages();
+    closeSidebarOnMobile();
   } catch (error) {
     addMessage('assistant', `Error: ${error.message}`);
   }
@@ -382,6 +384,7 @@ function renderBars(box, items) {
 }
 
 $('#analyticsBtn').addEventListener('click', async () => {
+  closeSidebarOnMobile();
   openModal('analyticsModal');
   try {
     await loadAnalytics();
@@ -479,6 +482,7 @@ async function loadProfile() {
 }
 
 $('#profileBtn').addEventListener('click', async () => {
+  closeSidebarOnMobile();
   openModal('profileModal');
   try { await loadProfile(); } catch (_) {}
 });
@@ -510,20 +514,43 @@ $('#saveProfile').addEventListener('click', async () => {
 
 $('#themeBtn').addEventListener('click', () => document.body.classList.toggle('dark'));
 
-// Sidebar open/close, like ChatGPT's collapsible sidebar. Remembers
-// the user's choice across visits via localStorage.
+// Sidebar open/close, like ChatGPT's collapsible sidebar. On desktop
+// it collapses to a thin strip; on mobile it becomes a full overlay
+// drawer with a backdrop, hidden by default. Remembers the user's
+// explicit choice across visits via localStorage — but if they've
+// never toggled it, default to open on desktop and closed on mobile.
+function isMobileViewport() {
+  return window.matchMedia('(max-width: 760px)').matches;
+}
+
 function applySidebarState(closed) {
   $('#appShell')?.classList.toggle('sidebar-closed', closed);
 }
 
-const savedSidebarState = localStorage.getItem('sidebarClosed') === 'true';
-applySidebarState(savedSidebarState);
+function setSidebarState(closed) {
+  applySidebarState(closed);
+  localStorage.setItem('sidebarClosed', String(closed));
+}
+
+const savedSidebarPref = localStorage.getItem('sidebarClosed');
+const initialSidebarClosed = savedSidebarPref !== null
+  ? savedSidebarPref === 'true'
+  : isMobileViewport();
+applySidebarState(initialSidebarClosed);
 
 $('#sidebarToggle').addEventListener('click', () => {
   const isClosed = !$('#appShell').classList.contains('sidebar-closed');
-  applySidebarState(isClosed);
-  localStorage.setItem('sidebarClosed', String(isClosed));
+  setSidebarState(isClosed);
 });
+
+// Tapping the dimmed backdrop (mobile overlay mode) closes the sidebar.
+$('#sidebarBackdrop')?.addEventListener('click', () => setSidebarState(true));
+
+// On mobile, picking something in the sidebar should close the
+// drawer afterward so the user sees the result, just like ChatGPT.
+function closeSidebarOnMobile() {
+  if (isMobileViewport()) setSidebarState(true);
+}
 
 loadChatHistory();
 scrollMessages();
