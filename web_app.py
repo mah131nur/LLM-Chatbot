@@ -22,6 +22,19 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 init_db()
 
 
+@app.after_request
+def add_no_cache_headers(response):
+    # This app is entirely dynamic (chat state, session id, profile,
+    # history) — nothing should ever be cached by the browser. Without
+    # this, a cached page load can carry a stale session id in
+    # window.CURRENT_SESSION_ID, which breaks things like the sidebar
+    # highlighting the wrong chat as active or delete-current-chat not
+    # redirecting correctly.
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    return response
+
+
 def get_session_id():
     if "session_id" not in session:
         session["session_id"] = create_session()

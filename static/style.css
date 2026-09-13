@@ -18,9 +18,8 @@ button{cursor:pointer;border:0}
 
 /* Sidebar */
 .sidebar{width:265px;flex:0 0 265px;background:linear-gradient(180deg,#0867e9,#0a56c6);color:#fff;padding:20px 14px 14px;display:flex;flex-direction:column;box-shadow:10px 0 35px rgba(0,72,180,.15);min-height:0}
-.brand{display:flex;align-items:center;gap:12px;padding:6px 10px 20px}
-.logo{width:50px;height:50px;border-radius:16px;background:#fff;color:var(--blue);display:grid;place-items:center;font-size:24px;font-weight:800;box-shadow:0 8px 20px rgba(0,0,0,.08)}
-.brand h2{margin:0;font-size:20px}.brand span{font-size:12px;opacity:.9}.brand i{display:inline-block;width:8px;height:8px;background:#45e18a;border-radius:50%;margin-right:5px}
+.brand{padding:6px 10px 20px}
+.brand h2{margin:0;font-size:20px}
 .side-action{width:100%;background:transparent;color:#eaf3ff;text-align:left;padding:11px 13px;border-radius:12px;display:flex;align-items:center;gap:12px;font-weight:650;margin-bottom:4px}
 .side-action:hover{background:rgba(255,255,255,.13)}
 .primary-side{background:rgba(255,255,255,.16)}
@@ -72,7 +71,7 @@ button{cursor:pointer;border:0}
 body.dark .typing-bubble .dot{background:#5f7ba3}
 
 /* Welcome (empty state, centered with composer) */
-.welcome{text-align:center;max-width:640px;margin:0 auto 18px}.welcome-icon{font-size:34px;color:var(--blue);font-weight:800}.welcome h2{margin:8px 0}.welcome p{color:var(--muted);line-height:1.5}
+.welcome{text-align:center;max-width:640px;margin:0 auto 18px}.welcome h2{margin:8px 0}.welcome p{color:var(--muted);line-height:1.5}
 .chips{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:16px}.chips button{background:#f1f7ff;border:1px solid #d5e7ff;color:var(--blue);padding:9px 12px;border-radius:20px}.chips button:hover{background:#e5f1ff}
 
 /* Composer — pill-style bar, ChatGPT-like */
@@ -128,7 +127,7 @@ body.dark .modal-icon,body.dark .profile-avatar{background:#17345a}
   }
   .app-shell:not(.sidebar-closed) .sidebar{transform:translateX(0)}
   .app-shell.sidebar-closed .sidebar{width:270px;flex-basis:270px}
-  .brand>div:last-child,.side-action span,.chats-heading span{display:block}
+  .side-action span,.chats-heading span{display:block}
   .chat-history{display:block}
   .sidebar-backdrop{
     position:fixed;inset:0;background:rgba(8,20,40,.45);z-index:250;

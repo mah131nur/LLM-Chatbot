@@ -11,11 +11,7 @@
 <div class="app-shell" id="appShell">
   <aside class="sidebar">
     <div class="brand">
-      <div class="logo">✦</div>
-      <div>
-        <h2>AI Chatbot</h2>
-        <span><i></i> Online</span>
-      </div>
+      <h2>AI Chatbot</h2>
     </div>
 
     <button class="side-action primary-side" id="newChat">＋ <span>New Chat</span></button>
@@ -45,7 +41,7 @@
     <header class="topbar">
       <div class="topbar-left">
         <button id="sidebarToggle" class="icon-btn" title="Toggle sidebar">☰</button>
-        <div class="topbar-brand">✦ <span>AI Knowledge Chatbot</span></div>
+        <div class="topbar-brand"><span>AI Knowledge Chatbot</span></div>
       </div>
       <div class="top-actions">
         <button id="themeBtn" title="Toggle theme">☼</button>
@@ -64,7 +60,6 @@
       <div class="composer-wrap">
         {% if not messages %}
         <div class="welcome" id="welcomeBlock">
-          <div class="welcome-icon">✦</div>
           <h2>Hello{% if profile.get('name') %}, {{ profile.get('name') }}{% endif %}! 👋</h2>
           <p>Ask me anything, or upload a file.</p>
         </div>

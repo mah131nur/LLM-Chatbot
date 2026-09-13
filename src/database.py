@@ -59,6 +59,7 @@ def add_message(session_id, role, content, domain=None, input_type="text"):
     with _connect() as conn:
         conn.execute("INSERT INTO messages(session_id,role,content,domain,input_type,created_at) VALUES(?,?,?,?,?,?)", (session_id, role, content, domain, input_type, stamp))
         conn.execute("UPDATE sessions SET updated_at=? WHERE id=?", (stamp, session_id))
+        conn.execute("UPDATE sessions SET updated_at=? WHERE id=?", (stamp, session_id))
 
 
 def set_title_if_new(session_id, title):
@@ -66,9 +67,10 @@ def set_title_if_new(session_id, title):
     if not title:
         return
     with _connect() as conn:
-        row = conn.execute("SELECT title FROM sessions WHERE id=?", (session_id,)).fetchone()
-        if row and row["title"] == "New Chat":
-            conn.execute("UPDATE sessions SET title=?, updated_at=? WHERE id=?", (title, now(), session_id))
+        conn.execute(
+            "UPDATE sessions SET title=?, updated_at=? WHERE id=? AND title='New Chat'",
+            (title, now(), session_id),
+        )
 
 
 def get_session_messages(session_id):
