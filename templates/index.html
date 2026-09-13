@@ -11,7 +11,7 @@
 <div class="app-shell" id="appShell">
   <aside class="sidebar">
     <div class="brand">
-      <div class="logo">🤖</div>
+      <div class="logo">✦</div>
       <div>
         <h2>AI Chatbot</h2>
         <span><i></i> Online</span>
@@ -30,7 +30,12 @@
     <div id="chatHistory" class="chat-history"></div>
 
     <div class="sidebar-bottom">
-      <button class="side-action profile-side" id="profileBtn">👤 <span>Profile</span></button>
+      <button class="side-action profile-side" id="profileBtn">
+        <span class="avatar-badge" id="profileAvatar">{{ (profile.get('name') or 'U')[0]|upper }}</span>
+        <span class="profile-name-block">
+          <strong id="profileNameLabel">{{ profile.get('name') or 'Set up profile' }}</strong>
+        </span>
+      </button>
     </div>
   </aside>
 
@@ -40,7 +45,7 @@
     <header class="topbar">
       <div class="topbar-left">
         <button id="sidebarToggle" class="icon-btn" title="Toggle sidebar">☰</button>
-        <div class="topbar-brand">🤖 <span>AI Knowledge Chatbot</span></div>
+        <div class="topbar-brand">✦ <span>AI Knowledge Chatbot</span></div>
       </div>
       <div class="top-actions">
         <button id="themeBtn" title="Toggle theme">☼</button>
@@ -59,7 +64,7 @@
       <div class="composer-wrap">
         {% if not messages %}
         <div class="welcome" id="welcomeBlock">
-          <div class="welcome-icon">🤖</div>
+          <div class="welcome-icon">✦</div>
           <h2>Hello{% if profile.get('name') %}, {{ profile.get('name') }}{% endif %}! 👋</h2>
           <p>Ask me anything, or upload a file.</p>
         </div>

@@ -216,6 +216,12 @@ function removeTypingIndicator() {
   $('#typingIndicator')?.remove();
 }
 
+function updateProfileDisplay(profile) {
+  const savedName = (profile && profile.name) ? profile.name : '';
+  $('#profileNameLabel').textContent = savedName || 'Set up profile';
+  $('#profileAvatar').textContent = (savedName || 'U').charAt(0).toUpperCase();
+}
+
 async function sendMessage(inputType = 'text') {
   const input = $('#messageInput');
   const question = input.value.trim();
@@ -239,6 +245,7 @@ async function sendMessage(inputType = 'text') {
     if (!data.ok) throw new Error(data.error || 'Something went wrong.');
     removeTypingIndicator();
     addMessage('assistant', data.answer);
+    if (data.profile) updateProfileDisplay(data.profile);
     loadChatHistory();
   } catch (error) {
     removeTypingIndicator();
@@ -506,6 +513,7 @@ $('#saveProfile').addEventListener('click', async () => {
 
   if (data.ok) {
     $('#profileStatus').textContent = 'Profile saved successfully.';
+    updateProfileDisplay(data.profile);
     setTimeout(() => closeModal('profileModal'), 700);
   } else {
     $('#profileStatus').textContent = 'Could not save the profile.';

@@ -77,15 +77,15 @@ def knowledge_answer(question, sid):
     # no LLM call needed.
     recall = handle_personal_information(question)
     if recall:
-        return recall, "personal"
+        return recall, "personal", False
 
     # Handle goodbye messages before calling the AI.
     if is_goodbye(question):
-        return "Goodbye! 👋 Take care and have a great day!", "casual"
+        return "Goodbye! 👋 Take care and have a great day!", "casual", False
 
     casual = instant_casual_response(question)
     if casual:
-        return casual, "casual"
+        return casual, "casual", False
 
     history = build_history(sid)
     file_context = get_active_file_context()
@@ -118,7 +118,7 @@ def knowledge_answer(question, sid):
         profile_context=build_profile_context(user_profile),
     )
     domain = "personal" if updated_profile else classify_topic(question)
-    return answer, domain
+    return answer, domain, updated_profile
 
 
 @app.route("/")
@@ -136,11 +136,14 @@ def chat():
     if not question:
         return jsonify({"ok": False, "error": "Please enter a message."}), 400
     sid = get_session_id()
-    answer, domain = knowledge_answer(question, sid)
+    answer, domain, profile_updated = knowledge_answer(question, sid)
     add_message(sid, "user", question, domain, input_type)
     add_message(sid, "assistant", answer, domain, input_type)
     set_title_if_new(sid, question)
-    return jsonify({"ok": True, "answer": answer, "domain": domain})
+    response = {"ok": True, "answer": answer, "domain": domain}
+    if profile_updated:
+        response["profile"] = user_profile
+    return jsonify(response)
 
 
 @app.get("/api/history")
