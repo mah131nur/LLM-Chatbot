@@ -11,14 +11,22 @@ from src.chatbot_engine import (
     extract_profile_updates_with_llm,
     apply_profile_updates,
     build_profile_context,
-    user_profile,
 )
+from src.database import init_db, get_profile, save_profile
+
+# The terminal app is single-user by nature (just you, in your own
+# terminal), so it uses one fixed local profile — unlike the web app,
+# which gives every browser its own private profile.
+LOCAL_USER_ID = "local-terminal-user"
+
+init_db()
+profile = get_profile(LOCAL_USER_ID)
 
 print("\n=======================================================")
 print("             🤖 AI KNOWLEDGE CHATBOT")
 print("=======================================================")
 print("🧠 Powered by an AI language model (Groq) with live web search")
-print("🧠 Personal information is saved in user_profile.json")
+print("🧠 Personal information is saved locally to this terminal's profile")
 print("Type 'bye' to exit.")
 print("=======================================================")
 
@@ -37,18 +45,20 @@ while True:
         print("\n🤖 Goodbye! 👋 Take care and have a great day! 😊")
         break
 
-    personal_answer = handle_personal_information(user_question)
+    personal_answer = handle_personal_information(user_question, profile)
     if personal_answer:
         print(f"\n🤖 Bot: {personal_answer}")
         continue
 
-    instant_answer = instant_casual_response(user_question)
+    instant_answer = instant_casual_response(user_question, profile)
     if instant_answer:
         print(f"\n🤖 Bot: {instant_answer}")
         continue
 
     profile_updates = extract_profile_updates_with_llm(user_question)
-    updated_profile = apply_profile_updates(profile_updates) if profile_updates else False
+    updated_profile = apply_profile_updates(profile, profile_updates) if profile_updates else False
+    if updated_profile:
+        save_profile(LOCAL_USER_ID, profile)
 
     question_for_llm = user_question
     if updated_profile:
@@ -67,7 +77,7 @@ while True:
     answer = get_answer(
         question_for_llm,
         history=conversation_history,
-        profile_context=build_profile_context(user_profile),
+        profile_context=build_profile_context(profile),
     )
     print(f"\n🤖 Bot: {answer}")
 

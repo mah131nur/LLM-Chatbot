@@ -10,10 +10,13 @@ from src.chatbot_engine import (
     handle_personal_information, instant_casual_response, is_goodbye,
     get_answer, classify_topic, summarize_file_with_llm,
     extract_profile_updates_with_llm, apply_profile_updates,
-    might_contain_profile_info, build_profile_context,
-    user_profile, save_user_profile,
+    build_profile_context,
 )
-from src.database import init_db, create_session, add_message, get_session_messages, get_history, set_title_if_new, add_uploaded_file, analytics, delete_session
+from src.database import (
+    init_db, create_session, add_message, get_session_messages, get_history,
+    set_title_if_new, add_uploaded_file, analytics, delete_session,
+    get_profile, save_profile, session_belongs_to_user,
+)
 from src.file_handler import extract_text, answer_from_file, SUPPORTED_EXTENSIONS
 
 app = Flask(__name__)
@@ -27,22 +30,32 @@ init_db()
 def add_no_cache_headers(response):
     # This app is entirely dynamic (chat state, session id, profile,
     # history) — nothing should ever be cached by the browser. Without
-    # this, a cached page load can carry a stale session id in
-    # window.CURRENT_SESSION_ID, which breaks things like the sidebar
-    # highlighting the wrong chat as active or delete-current-chat not
-    # redirecting correctly.
+    # this, a cached page load can carry stale data, which breaks
+    # things like the sidebar highlighting the wrong chat as active.
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     return response
 
 
+def get_user_id():
+    """Every browser gets its own anonymous, persistent user id —
+    stored in the signed session cookie the first time they visit.
+    All chat history and profile data is scoped to this id, so one
+    visitor never sees another visitor's conversations or profile,
+    without needing a real login/signup system."""
+    if "user_id" not in session:
+        session["user_id"] = uuid.uuid4().hex
+    return session["user_id"]
+
+
 def get_session_id():
+    uid = get_user_id()
     if "session_id" not in session:
-        session["session_id"] = create_session()
+        session["session_id"] = create_session(uid)
     return session["session_id"]
 
 
-def build_history(sid, limit=6, max_chars_per_message=600):
+def build_history(sid, uid, limit=6, max_chars_per_message=600):
     """Turn recently stored chat messages into Groq-style role/content
     history so the AI has some memory of the current conversation.
 
@@ -53,7 +66,7 @@ def build_history(sid, limit=6, max_chars_per_message=600):
     normal conversations well within budget while still giving the
     model real short-term memory."""
     try:
-        messages = get_session_messages(sid)
+        messages = get_session_messages(sid, uid)
     except Exception:
         return []
 
@@ -86,10 +99,10 @@ def get_active_file_context(limit_chars=4000):
         return None
 
 
-def knowledge_answer(question, sid):
+def knowledge_answer(question, sid, uid, profile):
     # "What do you know about me" style recall — fast, deterministic,
     # no LLM call needed.
-    recall = handle_personal_information(question)
+    recall = handle_personal_information(question, profile)
     if recall:
         return recall, "personal", False
 
@@ -97,23 +110,21 @@ def knowledge_answer(question, sid):
     if is_goodbye(question):
         return "Goodbye! 👋 Take care and have a great day!", "casual", False
 
-    casual = instant_casual_response(question)
+    casual = instant_casual_response(question, profile)
     if casual:
         return casual, "casual", False
 
-    history = build_history(sid)
+    history = build_history(sid, uid)
     file_context = get_active_file_context()
 
     # Let the LLM itself pull out any personal facts (name, age,
     # studies, university, interests) from this message — works in
     # any language/phrasing/typo, unlike rigid regex patterns, and
     # can catch several facts from one message at once.
-    profile_updates = (
-        extract_profile_updates_with_llm(question)
-        if might_contain_profile_info(question)
-        else {}
-    )
-    updated_profile = apply_profile_updates(profile_updates) if profile_updates else False
+    profile_updates = extract_profile_updates_with_llm(question)
+    updated_profile = apply_profile_updates(profile, profile_updates) if profile_updates else False
+    if updated_profile:
+        save_profile(uid, profile)
 
     question_for_llm = question
     if updated_profile:
@@ -133,7 +144,7 @@ def knowledge_answer(question, sid):
         question_for_llm,
         history=history,
         file_context=file_context,
-        profile_context=build_profile_context(user_profile),
+        profile_context=build_profile_context(profile),
     )
     domain = "personal" if updated_profile else classify_topic(question)
     return answer, domain, updated_profile
@@ -141,9 +152,11 @@ def knowledge_answer(question, sid):
 
 @app.route("/")
 def index():
+    uid = get_user_id()
     sid = get_session_id()
-    messages = get_session_messages(sid)
-    return render_template("index.html", messages=messages, profile=user_profile, session_id=sid)
+    messages = get_session_messages(sid, uid)
+    profile = get_profile(uid)
+    return render_template("index.html", messages=messages, profile=profile, session_id=sid)
 
 
 @app.post("/api/chat")
@@ -153,31 +166,38 @@ def chat():
     input_type = "voice" if data.get("input_type") == "voice" else "text"
     if not question:
         return jsonify({"ok": False, "error": "Please enter a message."}), 400
+    uid = get_user_id()
     sid = get_session_id()
-    answer, domain, profile_updated = knowledge_answer(question, sid)
+    profile = get_profile(uid)
+    answer, domain, profile_updated = knowledge_answer(question, sid, uid, profile)
     add_message(sid, "user", question, domain, input_type)
     add_message(sid, "assistant", answer, domain, input_type)
     set_title_if_new(sid, question)
     response = {"ok": True, "answer": answer, "domain": domain}
     if profile_updated:
-        response["profile"] = user_profile
+        response["profile"] = profile
     return jsonify(response)
 
 
 @app.get("/api/history")
 def history():
-    return jsonify(get_history())
+    uid = get_user_id()
+    return jsonify(get_history(uid))
 
 
 @app.get("/api/history/<int:session_id>")
 def history_session(session_id):
+    uid = get_user_id()
+    if not session_belongs_to_user(session_id, uid):
+        return jsonify({"messages": []}), 404
     session["session_id"] = session_id
-    return jsonify({"messages": get_session_messages(session_id)})
+    return jsonify({"messages": get_session_messages(session_id, uid)})
 
 
 @app.post("/api/new-chat")
 def new_chat():
-    session["session_id"] = create_session()
+    uid = get_user_id()
+    session["session_id"] = create_session(uid)
     # Starting a new chat should not carry over a file that was
     # attached to a previous conversation.
     session.pop("file_text_path", None)
@@ -187,31 +207,36 @@ def new_chat():
 
 @app.delete("/api/history/<int:session_id>")
 def delete_history(session_id):
-    delete_session(session_id)
+    uid = get_user_id()
+    delete_session(session_id, uid)
     if session.get("session_id") == session_id:
-        session["session_id"] = create_session()
+        session["session_id"] = create_session(uid)
     return jsonify({"ok": True})
 
 
 @app.get("/api/analytics")
 def get_analytics():
-    return jsonify(analytics())
+    uid = get_user_id()
+    return jsonify(analytics(uid))
 
 
 @app.get("/api/profile")
 def profile():
-    return jsonify(user_profile)
+    uid = get_user_id()
+    return jsonify(get_profile(uid))
 
 
 @app.post("/api/profile")
 def update_profile():
+    uid = get_user_id()
+    current = get_profile(uid)
     data = request.get_json(silent=True) or {}
     allowed = {"name", "age", "studies", "university", "interests"}
     for key in allowed:
         if key in data:
-            user_profile[key] = data[key]
-    save_user_profile(user_profile)
-    return jsonify({"ok": True, "profile": user_profile})
+            current[key] = data[key]
+    save_profile(uid, current)
+    return jsonify({"ok": True, "profile": current})
 
 
 @app.post("/api/upload")
@@ -296,7 +321,8 @@ def export_current():
 
 @app.get("/api/export/<int:session_id>")
 def export_chat(session_id):
-    messages = get_session_messages(session_id)
+    uid = get_user_id()
+    messages = get_session_messages(session_id, uid)
     history = "\n\n".join(f"{m['role'].upper()}: {m['content']}" for m in messages)
     out = Path("database") / f"chat_{session_id}.txt"
     out.write_text(history, encoding="utf-8")

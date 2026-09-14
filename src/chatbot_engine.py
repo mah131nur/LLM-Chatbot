@@ -36,8 +36,6 @@ except ImportError:
 # CONFIGURATION
 # ============================================================
 
-PROFILE_FILE = "user_profile.json"
-
 # You can override the model via a GROQ_MODEL environment
 # variable without touching code. See console.groq.com/docs/models
 # for the current list of available free models.
@@ -81,34 +79,6 @@ def get_tavily_client():
 
 
 # ============================================================
-# LOAD / SAVE USER PROFILE
-# ============================================================
-
-def load_user_profile():
-    if not os.path.exists(PROFILE_FILE):
-        return {}
-    try:
-        with open(PROFILE_FILE, "r", encoding="utf-8") as file:
-            data = json.load(file)
-            if isinstance(data, dict):
-                return data
-    except Exception:
-        pass
-    return {}
-
-
-def save_user_profile(profile):
-    try:
-        with open(PROFILE_FILE, "w", encoding="utf-8") as file:
-            json.dump(profile, file, indent=4, ensure_ascii=False)
-    except Exception as e:
-        print(f"⚠️ Could not save profile: {e}")
-
-
-user_profile = load_user_profile()
-
-
-# ============================================================
 # TEXT HELPERS
 # ============================================================
 
@@ -118,8 +88,8 @@ def normalize_text(text):
     return text
 
 
-def name_prefix():
-    name = user_profile.get("name")
+def name_prefix(profile):
+    name = (profile or {}).get("name")
     if name:
         return f", {name}"
     return ""
@@ -154,7 +124,7 @@ def is_goodbye(text):
 # PERSONAL INFORMATION
 # ============================================================
 
-def handle_personal_information(question):
+def handle_personal_information(question, profile):
     text = normalize_text(question)
 
     if (
@@ -163,15 +133,15 @@ def handle_personal_information(question):
         or "tell me what you know about me" in text
     ):
         facts = []
-        if user_profile.get("name"):
-            facts.append(f"your name is {user_profile['name']}")
-        if user_profile.get("age"):
-            facts.append(f"you are {user_profile['age']} years old")
-        if user_profile.get("studies"):
-            facts.append(f"you are studying {user_profile['studies']}")
-        if user_profile.get("university"):
-            facts.append(f"you study at {user_profile['university']}")
-        interests = user_profile.get("interests", [])
+        if profile.get("name"):
+            facts.append(f"your name is {profile['name']}")
+        if profile.get("age"):
+            facts.append(f"you are {profile['age']} years old")
+        if profile.get("studies"):
+            facts.append(f"you are studying {profile['studies']}")
+        if profile.get("university"):
+            facts.append(f"you study at {profile['university']}")
+        interests = profile.get("interests", [])
         if interests:
             facts.append("you are interested in " + " and ".join(interests))
         if not facts:
@@ -212,25 +182,6 @@ PROFILE_EXTRACTION_PROMPT = (
     "that wasn't explicitly said. Never include any text besides "
     "the JSON object itself — no explanation, no markdown fences."
 )
-
-
-PERSONAL_INFO_HINTS = [
-    "name", "naam", "age", "old", "saal", "umar", "years",
-    "study", "studying", "studies", "padh", "parh", "degree",
-    "university", "college", "institute",
-    "interest", "hobby", "like coding", "pasand",
-    "i am", "i'm", "main hoon", "mein hoon", "mera naam", "meri age",
-]
-
-
-def might_contain_profile_info(text):
-    """Cheap keyword pre-check so we only spend a Groq call on
-    profile extraction for messages that plausibly share personal
-    info, instead of on every single message — cuts API usage and
-    keeps normal Q&A fast, since most questions never mention any
-    of these."""
-    lowered = text.lower()
-    return any(hint in lowered for hint in PERSONAL_INFO_HINTS)
 
 
 def extract_profile_updates_with_llm(message):
@@ -292,23 +243,23 @@ def extract_profile_updates_with_llm(message):
         return {}
 
 
-def apply_profile_updates(updates):
-    """Merges extracted fields into the saved user_profile. Returns
-    True if anything actually changed (so the caller can decide
-    whether to mention it)."""
+def apply_profile_updates(profile, updates):
+    """Merges extracted fields into the given profile dict, in
+    place. Returns True if anything actually changed (so the caller
+    knows whether to persist it / mention it)."""
     changed = False
 
     if updates.get("name"):
         name = str(updates["name"]).strip().title()
-        if name and user_profile.get("name") != name:
-            user_profile["name"] = name
+        if name and profile.get("name") != name:
+            profile["name"] = name
             changed = True
 
     if updates.get("age") is not None:
         try:
             age = int(updates["age"])
-            if 1 <= age <= 120 and user_profile.get("age") != age:
-                user_profile["age"] = age
+            if 1 <= age <= 120 and profile.get("age") != age:
+                profile["age"] = age
                 changed = True
         except (TypeError, ValueError):
             pass
@@ -317,16 +268,16 @@ def apply_profile_updates(updates):
         studies = str(updates["studies"]).strip()
         if studies:
             value = studies.upper() if len(studies) <= 6 else studies.title()
-            if user_profile.get("studies") != value:
-                user_profile["studies"] = value
+            if profile.get("studies") != value:
+                profile["studies"] = value
                 changed = True
 
     if updates.get("university"):
         university = str(updates["university"]).strip()
         if university:
             value = university.upper() if len(university) <= 6 else university.title()
-            if user_profile.get("university") != value:
-                user_profile["university"] = value
+            if profile.get("university") != value:
+                profile["university"] = value
                 changed = True
 
     if updates.get("interests"):
@@ -334,7 +285,7 @@ def apply_profile_updates(updates):
         if isinstance(raw_interests, str):
             raw_interests = [raw_interests]
         if isinstance(raw_interests, list):
-            interests = user_profile.get("interests", [])
+            interests = profile.get("interests", [])
             if not isinstance(interests, list):
                 interests = []
             for interest in raw_interests:
@@ -342,10 +293,7 @@ def apply_profile_updates(updates):
                 if interest and interest not in interests:
                     interests.append(interest)
                     changed = True
-            user_profile["interests"] = interests
-
-    if changed:
-        save_user_profile(user_profile)
+            profile["interests"] = interests
 
     return changed
 
@@ -354,9 +302,9 @@ def apply_profile_updates(updates):
 # INSTANT CASUAL RESPONSES (kept — free, instant, saves API quota)
 # ============================================================
 
-def instant_casual_response(question):
+def instant_casual_response(question, profile):
     text = normalize_text(question)
-    name = name_prefix()
+    name = name_prefix(profile)
 
     if is_greeting(text):
         return f"Hello{name}! 👋 How are you doing today?"
@@ -367,8 +315,8 @@ def instant_casual_response(question):
     return None
 
 
-def casual_fallback():
-    name = name_prefix()
+def casual_fallback(profile):
+    name = name_prefix(profile)
     return f"I'm here to help{name}! Ask me anything."
 
 
