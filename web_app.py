@@ -10,7 +10,8 @@ from src.chatbot_engine import (
     handle_personal_information, instant_casual_response, is_goodbye,
     get_answer, classify_topic, summarize_file_with_llm,
     extract_profile_updates_with_llm, apply_profile_updates,
-    build_profile_context, user_profile, save_user_profile,
+    might_contain_profile_info, build_profile_context,
+    user_profile, save_user_profile,
 )
 from src.database import init_db, create_session, add_message, get_session_messages, get_history, set_title_if_new, add_uploaded_file, analytics, delete_session
 from src.file_handler import extract_text, answer_from_file, SUPPORTED_EXTENSIONS
@@ -107,7 +108,11 @@ def knowledge_answer(question, sid):
     # studies, university, interests) from this message — works in
     # any language/phrasing/typo, unlike rigid regex patterns, and
     # can catch several facts from one message at once.
-    profile_updates = extract_profile_updates_with_llm(question)
+    profile_updates = (
+        extract_profile_updates_with_llm(question)
+        if might_contain_profile_info(question)
+        else {}
+    )
     updated_profile = apply_profile_updates(profile_updates) if profile_updates else False
 
     question_for_llm = question

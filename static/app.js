@@ -296,7 +296,9 @@ async function loadChatHistory() {
   if (!box) return;
 
   try {
-    const response = await fetch('/api/history');
+    // Cache-busting timestamp: guarantees fresh data every call,
+    // regardless of any browser/proxy caching layer.
+    const response = await fetch('/api/history?_=' + Date.now());
     const data = await response.json();
 
     if (!data.length) {

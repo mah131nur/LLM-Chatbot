@@ -22,6 +22,7 @@ from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
+
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY")
 
@@ -211,6 +212,25 @@ PROFILE_EXTRACTION_PROMPT = (
     "that wasn't explicitly said. Never include any text besides "
     "the JSON object itself — no explanation, no markdown fences."
 )
+
+
+PERSONAL_INFO_HINTS = [
+    "name", "naam", "age", "old", "saal", "umar", "years",
+    "study", "studying", "studies", "padh", "parh", "degree",
+    "university", "college", "institute",
+    "interest", "hobby", "like coding", "pasand",
+    "i am", "i'm", "main hoon", "mein hoon", "mera naam", "meri age",
+]
+
+
+def might_contain_profile_info(text):
+    """Cheap keyword pre-check so we only spend a Groq call on
+    profile extraction for messages that plausibly share personal
+    info, instead of on every single message — cuts API usage and
+    keeps normal Q&A fast, since most questions never mention any
+    of these."""
+    lowered = text.lower()
+    return any(hint in lowered for hint in PERSONAL_INFO_HINTS)
 
 
 def extract_profile_updates_with_llm(message):
